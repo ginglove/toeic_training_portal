@@ -57,3 +57,14 @@ if (fs.existsSync(publicDir)) {
     }
   });
 }
+
+// Watch docs directory recursively
+const docsDir = path.join(ROOT_DIR, 'docs');
+if (fs.existsSync(docsDir)) {
+  fs.watch(docsDir, { recursive: true }, (eventType, filename) => {
+    if (filename && (filename.endsWith('.md') || filename.endsWith('.json') || filename.endsWith('.yaml'))) {
+      triggerSync(`docs/${filename}`);
+    }
+  });
+}
+

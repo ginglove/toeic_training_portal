@@ -33,8 +33,10 @@ fi
 cd "$ROOT_DIR"
 
 # Filter list for requirement and design files
-echo "📦 Transferring updated requirement files..."
+echo "📦 Transferring updated modular enterprise documentation (docs/)..."
+rclone sync "$ROOT_DIR/docs" "${REMOTE_NAME}:docs" --update --verbose
 
+echo "📦 Transferring root baseline specification files..."
 rclone copy "$ROOT_DIR" "${REMOTE_NAME}:${TARGET_DIR}" \
     --include "SRS*" \
     --include "upd.pdf" \
@@ -51,3 +53,4 @@ rclone copy "$ROOT_DIR" "${REMOTE_NAME}:${TARGET_DIR}" \
     --verbose
 
 echo "✅ Sync completed successfully to Google Drive folder [1ocddDyvyXd8fvRJdizPMa08MvJ9A64DS]"
+
