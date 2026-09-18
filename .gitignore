@@ -31,3 +31,33 @@ scratch/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local readme (internal use only)
+README.local.md
+README-LOCAL.md
+README*.local*
+
+# deployment documentation
+DEPLOYMENT*.md
+
+# requirements & specifications
+SRS*
+*requirement*
+upd.pdf
+*.docx
+public/requirements_full.txt
+public/srs_full.txt
+public/upd_full.txt
+
+# design & UI/UX specifications
+CHARACTER-ANIMATION-DESIGN*
+FIGMA-UIUX-DESIGN*
+UI-MOCKUP-DESIGN*
+UI-VISUAL-VALIDATION*
+
+# API documentation & schemas
+API-DOCUMENTATION.md
+openapi.json
+openapi.yaml
+tests/API-TEST-CASES-SPECIFICATION.md
+
