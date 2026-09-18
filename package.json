@@ -16,8 +16,11 @@
     "test:security": "npx tsx --test \"tests/security/*.test.ts\"",
     "test:e2e": "npx tsx --test \"tests/e2e/*.test.ts\"",
     "test:ui": "npx tsx --test \"tests/ui-ux/*.test.ts\"",
-    "test:api": "npx tsx --test \"tests/api/*.test.ts\""
+    "test:api": "npx tsx --test \"tests/api/*.test.ts\"",
+    "sync:drive": "bash scripts/sync-requirements-drive.sh",
+    "watch:drive": "node scripts/watch-requirements.js"
   },
+
   "dependencies": {
     "@prisma/client": "^5.10.2",
     "bcryptjs": "^2.4.3",

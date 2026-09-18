@@ -43,6 +43,7 @@ DEPLOYMENT*.md
 # requirements & specifications
 SRS*
 *requirement*
+!scripts/**
 upd.pdf
 *.docx
 public/requirements_full.txt
