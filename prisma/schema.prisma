@@ -1,0 +1,534 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --------------------------------------------------------
+// ENUMS HỆ THỐNG
+// --------------------------------------------------------
+
+enum Role {
+  STUDENT
+  CONTENT_CREATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum JourneyStatus {
+  INITIALIZING
+  ACTIVE
+  COMPLETED
+  DORMANT
+  RESET
+}
+
+enum JourneyMode {
+  STANDARD
+  MILESTONE
+  SPEED_DRILL
+}
+
+enum MapNodeType {
+  WARMUP
+  REVIEW_GATE
+  SKILL_DRILL
+  DAILY_BOSS
+  FINAL_EXAM
+  BOSS_CHALLENGE
+}
+
+enum NodeStatus {
+  LOCKED
+  CURRENT
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum BiomeTheme {
+  SUNRISE_VALLEY // 0% - 25% tiến trình
+  ECHO_FOREST    // 26% - 50% tiến trình
+  GRAMMAR_CANYON // 51% - 75% tiến trình
+  APEX_SUMMIT    // 76% - 100% tiến trình
+  VERDANT_FOREST // Backward compatibility
+  CRYSTAL_CAVES  // Backward compatibility
+  CELESTIAL_PEAK // Backward compatibility
+}
+
+enum ExamMode {
+  FULL_SIMULATION
+  MINI_TEST
+  DIAGNOSTIC
+  PRACTICE_PART
+  EXIT_EXAM
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  FORCE_SUBMITTED
+  ABANDONED
+}
+
+enum LeagueTier {
+  BRONZE
+  SILVER
+  GOLD
+  DIAMOND
+  MASTER
+}
+
+// --------------------------------------------------------
+// BẢNG NGƯỜI DÙNG & HỒ SƠ
+// --------------------------------------------------------
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  name            String
+  avatarUrl       String?
+  role            Role      @default(STUDENT)
+  isEmailVerified Boolean   @default(false)
+  level           Int       @default(1)
+  totalExp        Int       @default(0)
+  timezone        String    @default("UTC") // Chuẩn UTC cho Streak & Anti-cheat
+  deletedAt       DateTime? // Soft-delete pattern
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  journeys          UserJourney[]
+  diagnosticProfile DiagnosticProfile?
+  attempts          Attempt[]
+  mistakes          MistakeNotebook[]
+  gamification      GamificationState?
+  dailyQuests       UserDailyQuest[]
+  arenaMatches      ArenaParticipant[]
+  inventory         UserInventory[]
+  badges            UserBadge[]
+  certificates      Certificate[]
+  settings          UserSettings?
+
+  @@index([email])
+  @@index([role, createdAt])
+}
+
+model UserSettings {
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audioSpeed        Float   @default(1.0)
+  autoPlayAudio     Boolean @default(true)
+  dailyReminderTime String  @default("20:00")
+  enableWebPush     Boolean @default(true)
+  theme             String  @default("SYSTEM")
+  focusModeDefault  Boolean @default(false)
+}
+
+// --------------------------------------------------------
+// BẢNG HÀNH TRÌNH, LỘ TRÌNH SAGA & LINH THÚ
+// --------------------------------------------------------
+
+model UserJourney {
+  id                 String        @id @default(uuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetScore        Int
+  initialScore       Int?
+  predictedScore     Int?
+  dailyCommitMinutes Int           @default(45)
+  durationDays       Int           @default(16)
+  currentDay         Int           @default(1)
+  status             JourneyStatus @default(ACTIVE)
+  mode               JourneyMode   @default(STANDARD)
+  activeNodeId       String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  nodes    MapNode[]
+  guardian GuardianLexling?
+
+  @@index([userId, status])
+}
+
+model GuardianLexling {
+  id                String      @id @default(uuid())
+  journeyId         String      @unique
+  journey           UserJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  name              String      @default("Sparky")
+  stage             Int         @default(1) // 1: Baby, 2: Brave, 3: Fierce, 4: Ascended
+  spriteUrl         String
+  evolutionProgress Float       @default(0.0)
+  updatedAt         DateTime    @updatedAt
+}
+
+model MapNode {
+  id               String      @id @default(uuid())
+  journeyId        String
+  journey          UserJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  dayIndex         Int
+  nodeIndex        Int
+  nodeType         MapNodeType
+  title            String
+  coordXPercent    Float // Tọa độ S-Curve
+  coordYIndex      Int
+  biomeTheme       BiomeTheme
+  targetPart       Int
+  targetSkillId    String?
+  questionCount    Int         @default(10)
+  minStarsRequired Int         @default(1) // Đối với REVIEW_GATE là 2
+  status           NodeStatus  @default(LOCKED)
+  createdAt        DateTime    @default(now())
+
+  progress UserNodeProgress?
+
+  @@unique([journeyId, nodeIndex])
+  @@index([journeyId, status])
+  @@index([journeyId, dayIndex])
+}
+
+model UserNodeProgress {
+  id                  String    @id @default(uuid())
+  nodeId              String    @unique
+  node                MapNode   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  starsEarned         Int       @default(0) // 0-3 sao
+  bestAccuracy        Float?
+  totalAttempts       Int       @default(0)
+  bestDurationSeconds Int?
+  isCompleted         Boolean   @default(false)
+  lastCompletedAt     DateTime?
+}
+
+model DiagnosticProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  overallScore     Int
+  listeningScore   Int
+  readingScore     Int
+  thetaListening   Float // Khảo thí IRT 2PL
+  thetaReading     Float
+  skillMasteryJson Json // Vector độ thành thạo vi kỹ năng
+  testedAt         DateTime @default(now())
+}
+
+// --------------------------------------------------------
+// BẢNG NGÂN HÀNG CÂU HỎI & ĐỀ THI ETS
+// --------------------------------------------------------
+
+model Exam {
+  id                String   @id @default(uuid())
+  code              String   @unique
+  title             String
+  description       String?
+  totalQuestions    Int      @default(200)
+  timeLimitMinutes  Int      @default(120)
+  equatingTableJson Json // Bảng quy đổi điểm ETS chính thức
+  audioManifestJson Json? // Danh mục tệp âm thanh nghe
+  isPublished       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  stimulusGroups StimulusGroup[]
+  questions      Question[]
+  attempts       Attempt[]
+  ArenaMatch     ArenaMatch[]
+}
+
+model StimulusGroup {
+  id                 String  @id @default(uuid())
+  examId             String?
+  exam               Exam?   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  partNumber         Int
+  passageText        String? @db.Text
+  imageUrl           String?
+  audioUrl           String?
+  audioCuePointsJson Json? // Mốc mili-giây chuẩn ETS: [{qIndex, startMs, endMs}]
+  audioCueTimestamps Json? // Chi tiết âm thanh ETS: { introEndMs, questionCueTimestamps: [{ qId, startMs, endMs, intervalMs }] }
+
+  questions Question[]
+}
+
+model Question {
+  id                String         @id @default(uuid())
+  examId            String?
+  exam              Exam?          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  stimulusGroupId   String?
+  stimulusGroup     StimulusGroup? @relation(fields: [stimulusGroupId], references: [id], onDelete: SetNull)
+  partNumber        Int
+  questionNumber    Int
+  questionText      String?        @db.Text
+  clozeIndex        Int? // Vị trí điền từ trong Part 6
+  explanation       String?        @db.Text
+  trapNote          String?        @db.Text
+  clueWordsJson     Json?
+  irtDifficulty     Float          @default(0.0) // Tham số b (-3.0 đến +3.0)
+  irtDiscrimination Float          @default(1.0) // Tham số a (0.2 đến 2.5)
+  isDeleted         Boolean        @default(false)
+
+  options        Option[]
+  skills         QuestionSkillAssignment[]
+  attemptDetails AttemptDetail[]
+  notebookItems  MistakeNotebook[]
+
+  @@index([partNumber, irtDifficulty])
+  @@index([examId, partNumber, questionNumber])
+  @@index([stimulusGroupId])
+}
+
+model Option {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String // "A", "B", "C", "D"
+  text       String?  @db.Text
+  transcript String?  @db.Text // Cho Part 2 review
+  isCorrect  Boolean  @default(false)
+
+  @@unique([questionId, label])
+}
+
+model SkillTaxonomy {
+  id          String          @id // e.g. "RC_TENSE_PERFECT"
+  partNumber  Int
+  name        String
+  description String?
+  parentId    String?
+  parent      SkillTaxonomy?  @relation("TaxonomyTree", fields: [parentId], references: [id])
+  children    SkillTaxonomy[] @relation("TaxonomyTree")
+
+  questions QuestionSkillAssignment[]
+}
+
+model QuestionSkillAssignment {
+  id         String        @id @default(uuid())
+  questionId String
+  question   Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  skillId    String
+  skill      SkillTaxonomy @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  weight     Float         @default(1.0)
+
+  @@unique([questionId, skillId])
+}
+
+// --------------------------------------------------------
+// BẢNG BÀI THI & CHI TIẾT BÀI LÀM (ATTEMPTS & TELEMETRY)
+// --------------------------------------------------------
+
+model Attempt {
+  id                   String        @id @default(uuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId               String?
+  exam                 Exam?         @relation(fields: [examId], references: [id], onDelete: SetNull)
+  mode                 ExamMode
+  status               AttemptStatus @default(IN_PROGRESS)
+  totalScore           Int?
+  listeningScore       Int?
+  readingScore         Int?
+  totalDurationSeconds Int           @default(0)
+  lastSequence         Int           @default(0) // Concurrency sequence check
+  autoSubmitted        Boolean       @default(false) // Đánh dấu thu bài tự động quá hạn
+  integrityHash        String?       // Mã hash xác thực tính toàn vẹn bài thi
+  startedAt            DateTime      @default(now())
+  completedAt          DateTime?
+
+  details AttemptDetail[]
+
+  @@index([userId, status])
+  @@index([userId, mode, startedAt(sort: Desc)])
+  @@index([examId, status])
+}
+
+model AttemptDetail {
+  id             String   @id @default(uuid())
+  attemptId      String
+  attempt        Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption String? // "A", "B", "C", "D"
+  isCorrect      Boolean  @default(false)
+  isFlagged      Boolean  @default(false)
+  isGuessed      Boolean  @default(false)
+  timeSpentMs    Int      @default(0)
+  clientSequence Int      @default(1) // Số phiên bản tăng đơn điệu chống tranh chấp
+  answeredAt     DateTime @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, clientSequence])
+  @@index([questionId, isCorrect])
+}
+
+// --------------------------------------------------------
+// BẢNG SỔ TAY LỖI SAI & SM-2 SPACED REPETITION
+// --------------------------------------------------------
+
+model MistakeNotebook {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  easinessFactor   Float    @default(2.5) // EF trong SM-2
+  repetitionNumber Int      @default(0) // Số lần ôn đạt chuẩn
+  intervalDays     Int      @default(1) // Khoảng cách ngày lặp
+  nextReviewDate   DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  reviews ReviewHistory[]
+
+  @@unique([userId, questionId])
+  @@index([userId, nextReviewDate])
+}
+
+model ReviewHistory {
+  id                String          @id @default(uuid())
+  notebookId        String
+  notebook          MistakeNotebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  calculatedQuality Int // SM-2 q in [0, 5] dựa trên isCorrect, R_time, isGuessed
+  timeSpentMs       Int
+  isCorrect         Boolean
+  reviewedAt        DateTime        @default(now())
+}
+
+// --------------------------------------------------------
+// BẢNG GAMIFICATION, KHO VẬT PHẨM & CHỨNG NHẬN
+// --------------------------------------------------------
+
+model GamificationState {
+  id                    String     @id @default(uuid())
+  userId                String     @unique
+  user                  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gems                  Int        @default(50) // 100% In-Game currency
+  energy                Int        @default(5) // Max 5
+  lastEnergyRefill      DateTime   @default(now())
+  currentStreak         Int        @default(0)
+  maxStreak             Int        @default(0)
+  activeShieldCount     Int        @default(0) // Max 3
+  lastActivityDateUtc   DateTime?
+  dailyDrillGemsEarned  Int        @default(0) // Giới hạn chống cày cuốc (Anti-Grinding Cap: tối đa 30 Gems/ngày)
+  lastDrillGemsResetUtc DateTime?  // Mốc reset trần Gems theo UTC
+  leagueTier            LeagueTier @default(BRONZE)
+  weeklyExp             Int        @default(0)
+}
+
+model ShopItem {
+  id          String  @id
+  title       String
+  description String
+  category    String // "BOOSTER", "COSMETIC", "EBOOK"
+  gemsPrice   Int
+  imageUrl    String
+  isAvailable Boolean @default(true)
+}
+
+model UserInventory {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId      String
+  quantity    Int      @default(1)
+  purchasedAt DateTime @default(now())
+}
+
+model UserBadge {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeCode  String
+  title      String
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, badgeCode])
+}
+
+model Certificate {
+  id              String   @id @default(uuid())
+  certificateCode String   @unique
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  scoreAchieved   Int
+  issuedAt        DateTime @default(now())
+  pdfUrl          String
+}
+
+// --------------------------------------------------------
+// BẢNG NHIỆM VỤ HÀNG NGÀY (DAILY QUESTS)
+// --------------------------------------------------------
+
+model DailyQuest {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "QUEST_COMPLETE_1_NODE"
+  title       String
+  description String
+  targetCount Int      @default(1)
+  rewardGems  Int      @default(10)
+  rewardExp   Int      @default(50)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  userQuests UserDailyQuest[]
+}
+
+model UserDailyQuest {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId      String
+  quest        DailyQuest @relation(fields: [questId], references: [id], onDelete: Cascade)
+  assignedDate DateTime   @db.Date
+  currentCount Int        @default(0)
+  isCompleted  Boolean    @default(false)
+  isClaimed    Boolean    @default(false)
+  claimedAt    DateTime?
+
+  @@unique([userId, questId, assignedDate])
+  @@index([userId, assignedDate])
+}
+
+// --------------------------------------------------------
+// BẢNG ĐẤU TRƯỜNG ĐỐI KHÁNG THỜI GIAN THỰC (ARENA 1V1)
+// --------------------------------------------------------
+
+enum MatchStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ArenaMatch {
+  id             String      @id @default(uuid())
+  status         MatchStatus @default(WAITING)
+  examId         String?
+  exam           Exam?       @relation(fields: [examId], references: [id], onDelete: SetNull)
+  timeLimitSec   Int         @default(90)
+  totalQuestions Int         @default(10)
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime    @default(now())
+
+  participants ArenaParticipant[]
+
+  @@index([status, createdAt])
+}
+
+model ArenaParticipant {
+  id           String     @id @default(uuid())
+  matchId      String
+  match        ArenaMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score        Int        @default(0)
+  correctCount Int        @default(0)
+  mmrDelta     Int        @default(0)
+  isWinner     Boolean    @default(false)
+  joinedAt     DateTime   @default(now())
+
+  @@unique([matchId, userId])
+  @@index([userId])
+}

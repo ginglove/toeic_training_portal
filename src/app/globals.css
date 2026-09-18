@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Brand Primary & Interactive Glow */
+  --primary-600: #4F46E5;
+  --primary-500: #6366F1;
+  --primary-400: #818CF8;
+
+  /* Semantic Feedback Tokens */
+  --success-500: #10B981;
+  --success-text: #022C22;
+  --warning-500: #F59E0B;
+  --warning-text: #0F172A;
+  --danger-500: #EF4444;
+  --danger-glow: #F87171;
+
+  /* Cosmic Void Canvas & Elevated Bento Surfaces */
+  --neutral-950: #090D16;
+  --neutral-900: #0F172A;
+  --neutral-850: #151F32;
+  --neutral-800: #1E293B;
+  --neutral-400: #94A3B8;
+  --neutral-100: #F1F5F9;
+
+  /* Glassmorphism & Elevation */
+  --glass-surface: rgba(30, 41, 59, 0.70);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --focus-ring: 2px solid #818CF8;
+
+  /* Candy Accent Layer (Candy Crush Juice) */
+  --candy-pink: #FF6B9D;
+  --candy-gold: #FFC15E;
+  --candy-lemon: #FFE66D;
+  --candy-gradient: linear-gradient(135deg, #FF6B9D 0%, #FFC15E 50%, #FFE66D 100%);
+  --candy-glow: 0 0 25px rgba(255, 107, 157, 0.5);
+
+  /* Scrim Token Bảo Vệ Tương Phản Kính Mờ (WCAG AA) */
+  --scrim-dark: rgba(9, 13, 22, 0.82);
+
+  /* Chế Độ Đọc Giấy Ngà (Paper Mode Reading) */
+  --paper-bg: #F8F6F0;
+  --paper-text: #1E293B;
+  --paper-border: #E2E8F0;
+
+  --background: #090D16;
+  --foreground: #F1F5F9;
+  --surface: #1E293B;
+  --surface-raised: #334155;
+  --border: #334155;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Zero-G Floating Animation */
+@keyframes zero-g-float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.5deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+.animate-zero-g {
+  animation: zero-g-float 3.2s ease-in-out infinite;
+}
+
+/* 2.5D Isometric Transform utilities */
+.isometric-container {
+  transform: rotateX(55deg) rotateZ(-45deg);
+  transform-style: preserve-3d;
+}
+
+.isometric-card {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+
+.isometric-card:hover {
+  transform: translateY(-8px) translateZ(10px);
+}
+
+/* 2.5D Chunky Buttons */
+.btn-chunky {
+  position: relative;
+  transition: all 0.1s ease;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.btn-chunky:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.btn-chunky:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Glassmorphism Bento Card 2.0 */
+.bento-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
+}
+
+/* Candy Button 3D Juice */
+.btn-candy {
+  position: relative;
+  background: linear-gradient(180deg, #FF6B9D 0%, #FF4D85 100%);
+  box-shadow: 0 5px 0 #D81B60, 0 10px 20px rgba(255, 77, 133, 0.4);
+  border-radius: 1rem;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.6);
+  color: #FFFFFF;
+  font-weight: 800;
+  transition: all 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-candy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 #D81B60, 0 14px 24px rgba(255, 77, 133, 0.5);
+}
+
+.btn-candy:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #D81B60, 0 4px 10px rgba(255, 77, 133, 0.3);
+}
+
+/* Dark Scrim Text Pod - Guarantees WCAG AA on Glassmorphism */
+.scrim-text-pod {
+  background: rgba(9, 13, 22, 0.82);
+  backdrop-filter: blur(12px);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Reading Paper Mode Container */
+.reading-paper-container {
+  background-color: #F8F6F0;
+  color: #1E293B;
+  border-radius: 1rem;
+  border: 1px solid #E2E8F0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Performance Mode Fallback for Mid-range/Low-end Android Devices */
+body[data-perf-tier="low"] .bento-card,
+body[data-perf-tier="low"] .scrim-text-pod {
+  backdrop-filter: none !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+}
+
+body[data-perf-tier="medium"] .bento-card {
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(9, 13, 22, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
+
+/* Accessibility: prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

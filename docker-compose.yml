@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: toeic_pro_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: toeic_pro
+    ports:
+      - "5432:5432"
+    volumes:
+      - toeic_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d toeic_pro"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # 2. TOEIC PRO Web Application Service
+  # ----------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toeic_pro_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/toeic_pro?schema=public
+      - JWT_SECRET=toeic-pro-local-secret-jwt-key-minimum-32-chars
+      - JWT_REFRESH_SECRET=toeic-pro-local-secret-refresh-key-min-32-chars
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npx prisma db push &&
+        node prisma/seed.js &&
+        node server.js
+      "
+
+volumes:
+  toeic_pgdata:
+    driver: local
